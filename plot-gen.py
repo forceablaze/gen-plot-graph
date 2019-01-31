@@ -41,11 +41,19 @@ def failed_rate_handler(name, data):
 
         x_ticks.append('build id: {}'.format(x))
 
-    p1 = plt.bar(x_p, z_p, color='blue')
+    p1 = plt.bar(x_p, z_p, color='green')
     p2 = plt.bar(x_p, y_p, bottom=z_p, color='red')
 
     outputPath = Path('graph/{}'.format(options.type))
     outputPath.mkdir(parents=True, exist_ok=True)
+
+
+    mean_failed_rate = round(sum(y_p)/len(y_p), 2)
+    mean_success_rate = round(sum(z_p)/len(z_p), 2)
+    plt.figtext(0.3, 0.9, '失敗率平均値:{}%'.format(mean_failed_rate),
+        fontproperties=fontProperity)
+    plt.figtext(0.1, 0.9, '成功率平均値:{}%'.format(mean_success_rate),
+        fontproperties=fontProperity)
 
     plt.xlabel('build id')
     plt.ylabel('%')
