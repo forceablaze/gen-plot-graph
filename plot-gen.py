@@ -11,6 +11,49 @@ from numpy import arange
 
 import os, json
 
+def failed_rate_handler(name, data):
+    if data['build_count'] == 0:
+        return
+
+    x_p = []
+    y_p = []
+    z_p = []
+    x_ticks = []
+    y_ticks = []
+
+    plt.figure(figsize=(10, 8))
+
+    for build in data['builds']:
+
+        x = build['number']
+        y = build['failed_rate'] * 100
+        z = build['success_rate'] * 100
+
+        print('create plot:' \
+            ' x:{:5}' \
+            ' y1:{:10}' \
+            ' y2:{:10}'.format(
+                x, y, z))
+
+        x_p.append(x)
+        y_p.append(y)
+        z_p.append(z)
+
+        x_ticks.append('build id: {}'.format(x))
+
+    p1 = plt.bar(x_p, z_p, color='blue')
+    p2 = plt.bar(x_p, y_p, bottom=z_p, color='red')
+
+    outputPath = Path('graph/{}'.format(options.type))
+    outputPath.mkdir(parents=True, exist_ok=True)
+
+    plt.xlabel('build id')
+    plt.ylabel('%')
+    plt.legend((p1[0], p2[0]), ('success rate', 'failed rate'))
+    plt.savefig(Path(outputPath, '{}-failed-rate.png'.format(name)))
+
+    plt.clf()
+
 def mttr_handler(name, data):
 
     if data['build_count'] == 0:
@@ -41,21 +84,27 @@ def mttr_handler(name, data):
         y = build['mttr']/1000
         x_p.append(x)
         y_p.append(y)
-        x_ticks.append('build id: {}'.format(x))
+        x_ticks.append('{}'.format(x))
         y_ticks.append('{}'.format(y))
 
         plt.text(x, y, build['mttr_string'],
                 fontproperties=fontProperity)
 
+    outputPath = Path('graph/{}'.format(options.type))
+    outputPath.mkdir(parents=True, exist_ok=True)
+
+    plt.xlabel('build id')
+    plt.ylabel('seconds')
     plt.plot(x_p, y_p, marker='o')
-    plt.xticks(x_p, x_ticks, rotation=17)
+    plt.xticks(x_p, x_ticks, rotation=0)
     plt.yticks(y_p, y_ticks)
-    plt.savefig('{}-MTTR.png'.format(name))
+    plt.savefig(Path(outputPath, '{}-MTTR.png'.format(name)))
     plt.clf()
 
 
 DATA_TYPE_HANDLERS = {
-    "mttr": mttr_handler
+    "mttr": mttr_handler,
+    "failed-rate": failed_rate_handler
 }
 
 def handleJob(name, data):
@@ -89,15 +138,31 @@ def handleDocument(fPath):
             handleJob(job_name, data)
 
 def searchDocument(folder, suffix):
+
+    fileDict = {}
+    lastTime = {}
     for root, dirs, files in os.walk(folder):
         for _file in files:
             fPath = Path(root, _file)
             if fPath.suffix != suffix:
                 continue
-            print('handle document {}'.format(fPath))
 
-            result = handleDocument(fPath)
-            retrievedResult[fPath] = result
+            splited = str(fPath.stem).split('-')
+            # time splited[-1]
+            # view_path splited[-2]
+
+            if splited[-2] not in lastTime:
+                lastTime[splited[-2]] = 0
+
+            if int(splited[-1]) > lastTime[splited[-2]]:
+                lastTime[splited[-2]] = int(splited[-1])
+                fileDict[splited[-2]] = fPath
+
+    for viewPath, path in fileDict.items():
+        print(viewPath)
+        print('handle document {}'.format(path))
+        result = handleDocument(fPath)
+        retrievedResult[path] = result
 
 if __name__ == '__main__':
     parser = OptionParser()  
